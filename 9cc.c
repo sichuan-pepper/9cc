@@ -35,9 +35,7 @@ typedef enum {
     ND_NUM, // 整数
     ND_EQ,
     ND_NEQ,
-    ND_GT,
     ND_LT,
-    ND_GTE,
     ND_LTE
 } NodeKind;
 
@@ -97,7 +95,7 @@ void expect(char *op){
     if(token->kind != TK_RESERVED || 
        strlen(op) != token->len ||
        memcmp(token->str, op, token->len)){
-        error_at(token->str, "'%c'ではありません", op);
+        error_at(token->str, "'%s'ではありません", op);
     }
     token = token->next;
 }
@@ -130,7 +128,7 @@ Token *tokenize(char *p){
     head.next = NULL;
     Token *cur = &head;
     while(*p){
-        fprintf(stderr, "%c\n",*p);
+        //空白文字をスキップ
         if(isspace(*p)){
             //fprintf(stderr, "space\n");
             p++;
@@ -153,13 +151,15 @@ Token *tokenize(char *p){
         if(isdigit(*p)){
             //fprintf(stderr, "number.\n");
             cur = new_token(TK_NUM, cur, p, 0);
+            char *q;
             cur->val = strtol(p, &p, 10);
+            cur->len = p - q;
             continue;
         }
         error_at(p, "トークナイズできません");
     }
 
-    new_token(TK_EOF, cur, p, 1);
+    new_token(TK_EOF, cur, p, 0);
     return head.next;
 }
 
@@ -238,9 +238,9 @@ Node *relational(){
         }else if (consume("<=")){
             node = new_node(ND_LTE, node, add());
         }else if (consume(">")){
-            node = new_node(ND_GT, node, add());
+            node = new_node(ND_LT, add(), node);
         }else if (consume(">=")){
-            node = new_node(ND_GTE, node, add());
+            node = new_node(ND_LTE, add(), node);
         }else{
             return node;
         }
@@ -303,23 +303,9 @@ void gen(Node *node){
         "  movzb rax, al\n"
         );
         break;
-    case ND_GT:
-        printf(
-        "  cmp rdi, rax\n"
-        "  setl al\n"
-        "  movzb rax, al\n"
-        );
-        break;
     case ND_LTE:
         printf(
         "  cmp rax, rdi\n"
-        "  setle al\n"
-        "  movzb rax, al\n"
-        );
-        break;
-    case ND_GTE:
-        printf(
-        "  cmp rdi, rax\n"
         "  setle al\n"
         "  movzb rax, al\n"
         );
